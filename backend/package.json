@@ -1,0 +1,30 @@
+{
+  "name": "floatchat-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon --watch src --exec node src/index.js",
+    "start": "node src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "ingest-csv": "node data-ingestion/process-csv.js",
+    "load-data": "node data-ingestion/load-csv-data.js"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^9.1.14",
+    "@deck.gl/layers": "^9.1.14",
+    "@deck.gl/react": "^9.1.14",
+    "@prisma/client": "5.20.0",
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.19.2",
+    "maplibre-gl": "^5.7.3",
+    "papaparse": "5.4.1",
+    "react-leaflet-heatmap-layer-v3": "^3.0.3-beta-1",
+    "react-map-gl": "^8.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.7",
+    "prisma": "5.20.0"
+  }
+}

@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+:root {
+  --navy: #1e3a8a;
+  --blueAccent: #3b82f6;
+}
+
+/* Custom float marker styles */
+.custom-float-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-float-marker .relative {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-float-marker .animate-ping {
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Map container improvements */
+.leaflet-container {
+  background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%) !important;
+}
+
+/* Custom popup styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+/* Heatmap styling */
+.leaflet-heatmap-layer {
+  opacity: 0.7;
+}
+
+

@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model argo_floats {
+  id               Int       @id @default(autoincrement())
+  float_id         String    @unique
+  wmo_number       String
+  deployment_date  DateTime?
+  last_position_lat Decimal? @db.Decimal(10, 6)
+  last_position_lon Decimal? @db.Decimal(10, 6)
+  status           String?   @default("active")
+  platform_type    String?
+  created_at       DateTime  @default(now())
+  profiles         argo_profiles[]
+  trajectories     argo_trajectories[]
+}
+
+model argo_profiles {
+  id                Int       @id @default(autoincrement())
+  float_id          String
+  profile_date      DateTime
+  cycle_number      Int?
+  latitude          Decimal   @db.Decimal(10, 6)
+  longitude         Decimal   @db.Decimal(10, 6)
+  profile_direction String?
+  created_at        DateTime  @default(now())
+  measurements      argo_measurements[]
+
+  argo_floats argo_floats @relation(fields: [float_id], references: [float_id])
+}
+
+model argo_measurements {
+  id            Int       @id @default(autoincrement())
+  profile_id    Int
+  pressure      Decimal?  @db.Decimal(8, 2)
+  temperature   Decimal?  @db.Decimal(6, 3)
+  salinity      Decimal?  @db.Decimal(6, 3)
+  depth         Decimal?  @db.Decimal(8, 2)
+  quality_flag  String?   @db.Char(1)
+
+  profile argo_profiles @relation(fields: [profile_id], references: [id])
+}
+
+model argo_trajectories {
+  id         Int       @id @default(autoincrement())
+  float_id   String
+  timestamp  DateTime
+  latitude   Decimal   @db.Decimal(10, 6)
+  longitude  Decimal   @db.Decimal(10, 6)
+  location_quality String? @db.Char(1)
+
+  argo_floats argo_floats @relation(fields: [float_id], references: [float_id])
+}
+
+
