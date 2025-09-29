@@ -135,6 +135,7 @@ export default function App() {
   }
 
   const handleSelectFloat = useCallback(async (floatId: string) => {
+    console.log('Selected float:', floatId)
     try {
       const [trajRes, profilesRes] = await Promise.all([
         fetch(`${API_URL}/api/floats/${floatId}/trajectory`),
@@ -360,18 +361,6 @@ export default function App() {
                   <TileLayer 
                     attribution='&copy; OpenStreetMap contributors' 
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-                  />
-                  
-                  {/* Regional boundaries */}
-                  <Polygon
-                    positions={ArabianSeaBoundary as any}
-                    pathOptions={{
-                      color: '#3b82f6',
-                      fillColor: '#3b82f6',
-                      fillOpacity: 0.1,
-                      weight: 2,
-                      dashArray: '5, 5'
-                    }}
                   />
                   
                   <MapUpdater floats={floats} selectedFloats={selectedFloats} trajectory={trajectory} showHeatmap={showHeatmap} onFloatSelect={handleSelectFloat} />

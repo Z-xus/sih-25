@@ -133,32 +133,43 @@ class ArgoCsvProcessor {
 
   async processProfileData(profileId, profileData, floatMetadata) {
     try {
-      const sample = profileData[0];
-      const floatId = sample.PLATFORM_NUMBER || sample.platform_number || sample.FLOAT_ID || sample.float_id || profileId;
-      const lat = sample.LATITUDE || sample.latitude;
-      const lon = sample.LONGITUDE || sample.longitude;
-      
-      if (!lat || !lon || !this.isValidCoordinate(lat) || !this.isValidCoordinate(lon)) {
-        console.warn(`Invalid coordinates for profile ${profileId}`);
-        return;
-      }
+        const sample = profileData[0];
+        const floatId = sample.PLATFORM_NUMBER || sample.platform_number || sample.FLOAT_ID || sample.float_id || profileId;
+        let lat = sample.LATITUDE || sample.latitude || null;
+        let lon = sample.LONGITUDE || sample.longitude || null;
+        const cycleNumber = sample.CYCLE_NUMBER || sample.cycle_number || 0;
+        const date = this.extractDateFromFilename(path.basename(profileId));
 
-      // Insert/update float info
-      await this.upsertFloat(String(floatId), { latitude: lat, longitude: lon });
-      
-      // Insert profile
-      const profile = await this.insertProfile(String(floatId), {
-        latitude: lat,
-        longitude: lon,
-        cycle_number: sample.CYCLE_NUMBER || sample.cycle_number || 0,
-        date: this.extractDateFromFilename(path.basename(profileId))
-      });
-      
-      // Insert measurements
-      await this.insertMeasurements(profile.id, profileData);
-      
+        if ((!lat || !lon || !this.isValidCoordinate(lat) || !this.isValidCoordinate(lon)) && floatMetadata[floatId]) {
+            const metadata = floatMetadata[floatId];
+            const lastPosition = metadata.positions[metadata.positions.length - 1];
+            if (lastPosition) {
+                lat = lat || lastPosition.latitude;
+                lon = lon || lastPosition.longitude;
+            }
+        }
+
+        if (!lat || !lon || !this.isValidCoordinate(lat) || !this.isValidCoordinate(lon)) {
+            console.warn(`Invalid coordinates for profile ${profileId}`);
+            return;
+        }
+
+        // Insert/update float info
+        await this.upsertFloat(String(floatId), { latitude: lat, longitude: lon });
+
+        // Insert profile
+        const profile = await this.insertProfile(String(floatId), {
+            latitude: lat,
+            longitude: lon,
+            cycle_number: cycleNumber,
+            date: date
+        });
+
+        // Insert measurements
+        await this.insertMeasurements(profile.id, profileData);
+
     } catch (error) {
-      console.error(`Error processing profile ${profileId}:`, error);
+        console.error(`Error processing profile ${profileId}:`, error);
     }
   }
 

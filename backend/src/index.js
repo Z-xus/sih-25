@@ -1,3 +1,7 @@
+function isValidCoordinate(coord) {
+  const num = Number(coord);
+  return !isNaN(num) && num >= -180 && num <= 180;
+}
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -10,12 +14,8 @@ dotenv.config();
 const app = express();
 
 // Configure CORS to allow requests from frontend
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// app.use(cors());
+app.use(cors({ origin: '*' }));
 
 app.use(express.json());
 
@@ -52,13 +52,17 @@ function loadCSVData() {
       const profiles = groupByProfile(data);
       
       Object.entries(profiles).forEach(([profileId, profileData]) => {
-        const floatId = `2901${String(profileId).padStart(3, '0')}`;
+        // Use real float/platform ID if available
         const sample = profileData[0];
-        
-        // Generate realistic Indian Ocean position
-        const lat = 10 + (parseInt(profileId) % 10) * 2 + (date.getDate() % 7) * 0.5;
-        const lon = 70 + (parseInt(profileId) % 15) * 2 + (date.getDate() % 5) * 0.3;
-        
+        const floatId = sample.PLATFORM_NUMBER || sample.platform_number || sample.FLOAT_ID || sample.float_id || `2901${String(profileId).padStart(3, '0')}`;
+        // Use real latitude/longitude from CSV
+        const lat = (isValidValue(sample.LATITUDE) ? Number(sample.LATITUDE) : (isValidValue(sample.latitude) ? Number(sample.latitude) : null));
+        const lon = (isValidValue(sample.LONGITUDE) ? Number(sample.LONGITUDE) : (isValidValue(sample.longitude) ? Number(sample.longitude) : null));
+        // Validate coordinates
+        if (lat === null || lon === null || !isValidCoordinate(lat) || !isValidCoordinate(lon)) {
+          console.warn(`Skipping float ${floatId} profile ${profileId}: invalid coordinates lat=${lat}, lon=${lon}`);
+          return;
+        }
         // Add float if not exists
         if (!FLOAT_DATA.find(f => f.float_id === floatId)) {
           FLOAT_DATA.push({
@@ -71,7 +75,6 @@ function loadCSVData() {
             last_profile_date: date
           });
         }
-        
         // Store measurements
         const measurements = profileData
           .filter(row => isValidValue(row.PRES) && isValidValue(row.TEMP))
@@ -82,7 +85,6 @@ function loadCSVData() {
             depth: Number(row.PRES) * 1.019716,
             quality_flag: '1'
           }));
-        
         if (!MEASUREMENTS_DATA[floatId]) {
           MEASUREMENTS_DATA[floatId] = [];
         }
