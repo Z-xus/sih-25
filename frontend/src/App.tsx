@@ -209,61 +209,120 @@ export default function App() {
       case 'profiles':
         return (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="font-semibold text-navy mb-3 flex items-center gap-2">
-                <Thermometer size={18} /> Temperature Profile
-              </h3>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurements.map((m, i) => ({ depth: m.depth, temp: m.temperature }))}>
-                    <XAxis dataKey="depth" label={{ value: 'Depth (m)', position: 'insideBottom', offset: -5 }} />
-                    <YAxis label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip formatter={(value, name) => [value, name === 'temp' ? 'Temperature' : name]} />
-                    <Line type="monotone" dataKey="temp" stroke="#ef4444" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+            {measurements && measurements.length > 0 ? (
+              <>
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <h3 className="font-semibold text-navy mb-3 flex items-center gap-2">
+                    <Thermometer size={18} /> Temperature Profile
+                  </h3>
+                  <div style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={measurements.map((m, i) => ({ depth: m.depth, temp: m.temperature }))}>
+                        <XAxis dataKey="depth" label={{ value: 'Depth (m)', position: 'insideBottom', offset: -5 }} />
+                        <YAxis label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip formatter={(value, name) => [value, name === 'temp' ? 'Temperature' : name]} />
+                        <Line type="monotone" dataKey="temp" stroke="#ef4444" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <h3 className="font-semibold text-navy mb-3 flex items-center gap-2">
+                    <Droplets size={18} /> Salinity Profile
+                  </h3>
+                  <div style={{ height: 300 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={measurements.map((m, i) => ({ depth: m.depth, salinity: m.salinity }))}>
+                        <XAxis dataKey="depth" label={{ value: 'Depth (m)', position: 'insideBottom', offset: -5 }} />
+                        <YAxis label={{ value: 'Salinity (PSU)', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip formatter={(value, name) => [value, name === 'salinity' ? 'Salinity' : name]} />
+                        <Line type="monotone" dataKey="salinity" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center text-gray-500">
+                No profile data available. Select a float on the map to view its profile.
               </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="font-semibold text-navy mb-3 flex items-center gap-2">
-                <Droplets size={18} /> Salinity Profile
-              </h3>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurements.map((m, i) => ({ depth: m.depth, salinity: m.salinity }))}>
-                    <XAxis dataKey="depth" label={{ value: 'Depth (m)', position: 'insideBottom', offset: -5 }} />
-                    <YAxis label={{ value: 'Salinity (PSU)', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip formatter={(value, name) => [value, name === 'salinity' ? 'Salinity' : name]} />
-                    <Line type="monotone" dataKey="salinity" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            )}
           </div>
         )
       
       case 'comparison':
         return (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="font-semibold text-navy mb-3 flex items-center gap-2">
-                <BarChart3 size={18} /> Multi-Float Comparison
-              </h3>
-              <div className="text-sm text-gray-600 mb-3">
-                Selected floats: {selectedFloats.length}
+            {measurements && measurements.length > 0 ? (
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="font-semibold text-navy mb-3 flex items-center gap-2">
+                  <BarChart3 size={18} /> Multi-Float Comparison
+                </h3>
+                <div className="text-sm text-gray-600 mb-3">
+                  Selected floats: {selectedFloats.length}
+                </div>
+                <div style={{ height: 300 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={measurements.map(m => ({
+                        depth: m.depth,
+                        meanTemp: measurements
+                          .filter(x => Math.abs(x.depth - m.depth) < 10)  // Get measurements within 10m depth range
+                          .reduce((sum, x) => sum + x.temperature, 0) / 
+                          measurements.filter(x => Math.abs(x.depth - m.depth) < 10).length || 0,
+                        meanSal: measurements
+                          .filter(x => Math.abs(x.depth - m.depth) < 10)
+                          .reduce((sum, x) => sum + x.salinity, 0) /
+                          measurements.filter(x => Math.abs(x.depth - m.depth) < 10).length || 0,
+                        tempRange: [
+                          Math.min(...measurements
+                            .filter(x => Math.abs(x.depth - m.depth) < 10)
+                            .map(x => x.temperature)),
+                          Math.max(...measurements
+                            .filter(x => Math.abs(x.depth - m.depth) < 10)
+                            .map(x => x.temperature))
+                        ]
+                      })).sort((a, b) => a.depth - b.depth)}>
+                      <XAxis dataKey="depth" label={{ value: 'Depth (m)', position: 'insideBottom', offset: -5 }} />
+                      <YAxis yAxisId="temp" label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft' }} />
+                      <YAxis yAxisId="sal" orientation="right" label={{ value: 'Salinity (PSU)', angle: 90, position: 'insideRight' }} />
+                      <Tooltip formatter={(value: number, name) => [
+                        typeof value === 'number' ? value.toFixed(2) : value,
+                        name === 'meanTemp' ? 'Mean Temperature (°C)' :
+                        name === 'meanSal' ? 'Mean Salinity (PSU)' :
+                        name === 'tempRange' ? 'Temp. Range (°C)' : name
+                      ]} />
+                      <Area 
+                        yAxisId="temp" 
+                        dataKey="tempRange" 
+                        fill="#ef444433"
+                        stroke="none"
+                        name="Temperature Range"
+                      />
+                      <Line 
+                        yAxisId="temp" 
+                        type="monotone" 
+                        dataKey="meanTemp" 
+                        stroke="#ef4444" 
+                        strokeWidth={2}
+                        name="Mean Temperature"
+                      />
+                      <Line 
+                        yAxisId="sal" 
+                        type="monotone" 
+                        dataKey="meanSal" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        name="Mean Salinity"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={floats.filter(f => selectedFloats.includes(f.float_id)).slice(0, 5)}>
-                    <XAxis dataKey="float_id" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="last_position_lat" fill="#3b82f6" name="Latitude" />
-                  </BarChart>
-                </ResponsiveContainer>
+            ) : (
+              <div className="bg-white rounded-lg shadow-sm p-4 text-center text-gray-500">
+                No comparison data available. Select floats on the map to compare their profiles.
               </div>
-            </div>
+            )}
           </div>
         )
       
@@ -353,6 +412,29 @@ export default function App() {
     setFloatsFiltered(inside);
   }, [polygonVertices, floats]);
 
+  // Add a select button to finalize polygon selection
+  const handleSelectPolygon = () => {
+    if (polygonVertices.length < 3) return;
+    const polygon = L.polygon(polygonVertices);
+    const inside = floats
+      .filter(f => f.last_position_lat && f.last_position_lon)
+      .filter(f =>
+        polygon.getBounds().contains([f.last_position_lat, f.last_position_lon])
+      )
+      .map(f => f.float_id);
+    setSelectedFloats(inside); // Update selected floats
+    setPolygonMode(false); // Exit polygon mode
+    setPolygonVertices([]); // Clear polygon vertices
+  };
+
+  // Add a clear button to unselect all floats
+  const handleClearSelection = () => {
+    setSelectedFloats([]); // Clear all selected floats
+    setPolygonMode(false); // Exit polygon mode if active
+    setPolygonVertices([]); // Clear polygon vertices
+    setFloatsFiltered(null); // Reset filtered floats
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
@@ -380,9 +462,9 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto p-4">
-        <div className="grid grid-cols-12 gap-6">
+        <div className="space-y-6">
           {/* Map Section */}
-          <section className="col-span-12 lg:col-span-8">
+          <section className="w-full">
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-navy font-semibold">
@@ -411,7 +493,8 @@ export default function App() {
                 <MapContainer center={[center.lat, center.lng]} zoom={5} style={{ height: '100%', width: '100%' }}>
                   <TileLayer 
                     attribution='&copy; OpenStreetMap contributors' 
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+                    // url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"
                   />
                   
                   <MapUpdater floats={uniqueFloats} selectedFloats={selectedFloats} trajectory={trajectory} showHeatmap={showHeatmap} onFloatSelect={handleSelectFloat} />
@@ -446,7 +529,7 @@ export default function App() {
                             <div className="font-semibold text-navy">Float {float.float_id}</div>
                             <div className="text-sm space-y-1">
                               <div><span className="font-medium">Status:</span> {float.status}</div>
-                              <div><span className="font-medium">Position:</span> {float.last_position_lat?.toFixed(3)}°, {float.last_position_lon?.toFixed(3)}°</div>
+                              <div><span className="font-medium">Longitude:</span> {float.last_position_lon?.toFixed(3)}°</div>
                               <div><span className="font-medium">Platform:</span> {float.platform_type}</div>
                             </div>
                             <button 
@@ -510,20 +593,34 @@ export default function App() {
                   >
                     {polygonMode ? 'Cancel Polygon' : 'Draw Polygon'}
                   </button>
+                  {polygonMode && (
+                    <button
+                      onClick={handleSelectPolygon}
+                      className="ml-2 px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                    >
+                      Select
+                    </button>
+                  )}
+                  <button
+                    onClick={handleClearSelection}
+                    className="ml-2 px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                  >
+                    Clear
+                  </button>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Analysis Panel */}
-          <aside className="col-span-12 lg:col-span-4 space-y-4">
+          {/* Analysis Tools Section */}
+          <section className="w-full">
             {/* Analysis Mode Selector */}
             <div className="bg-white rounded-lg shadow-sm">
               <div className="p-4 border-b">
                 <h3 className="font-semibold text-navy">Analysis Tools</h3>
               </div>
               <div className="p-4">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-4">
                   {[
                     { key: 'overview', label: 'Overview', icon: Globe },
                     { key: 'profiles', label: 'Profiles', icon: Thermometer },
@@ -674,7 +771,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </aside>
+          </section>
         </div>
       </main>
 
