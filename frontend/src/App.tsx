@@ -80,6 +80,9 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [tempRange, setTempRange] = useState<{min: number, max: number}>({ min: 0, max: 30 })
   const [salinityRange, setSalinityRange] = useState<{min: number, max: number}>({ min: 30, max: 40 })
+  const [polygonMode, setPolygonMode] = useState(false);
+  const [polygonVertices, setPolygonVertices] = useState<[number, number][]>([]);
+  const [floatsFiltered, setFloatsFiltered] = useState<string[] | null>(null); // null = no filter
 
   // Simple color functions for scientific visualization
   const getTempColor = (temp: number) => {
@@ -188,6 +191,18 @@ export default function App() {
       color: f.status === 'active' ? '#3b82f6' : '#6b7280'
     })), [floats]
   )
+
+  // Filter out duplicate WMO numbers
+  const uniqueFloats = useMemo(() => {
+    const seen = new Set();
+    return floats.filter(float => {
+      if (seen.has(float.wmo_number)) {
+        return false;
+      }
+      seen.add(float.wmo_number);
+      return true;
+    });
+  }, [floats]);
 
   const renderAnalysisPanel = () => {
     switch (analysisMode) {
@@ -302,6 +317,42 @@ export default function App() {
     }
   }
 
+  // Move the polygon mode logic into a component that is a child of MapContainer
+  function PolygonModeHandler({ polygonMode, setPolygonVertices }: any) {
+    const map = useMap();
+
+    useEffect(() => {
+      if (polygonMode) {
+        map.dragging.disable();
+        map.on('click', (e: L.LeafletMouseEvent) => {
+          setPolygonVertices((prev: [number, number][]) => [...prev, [e.latlng.lat, e.latlng.lng]]);
+        });
+      } else {
+        map.dragging.enable();
+        map.off('click');
+      }
+
+      return () => {
+        map.dragging.enable();
+        map.off('click');
+      };
+    }, [polygonMode, map, setPolygonVertices]);
+
+    return null;
+  }
+
+  useEffect(() => {
+    if (polygonVertices.length < 3) return;
+    const polygon = L.polygon(polygonVertices);
+    const inside = floats
+      .filter(f => f.last_position_lat && f.last_position_lon)
+      .filter(f =>
+        polygon.getBounds().contains([f.last_position_lat, f.last_position_lon])
+      ) // Removed incorrect `polygon.contains` usage
+      .map(f => f.float_id);
+    setFloatsFiltered(inside);
+  }, [polygonVertices, floats]);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
@@ -363,7 +414,7 @@ export default function App() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
                   />
                   
-                  <MapUpdater floats={floats} selectedFloats={selectedFloats} trajectory={trajectory} showHeatmap={showHeatmap} onFloatSelect={handleSelectFloat} />
+                  <MapUpdater floats={uniqueFloats} selectedFloats={selectedFloats} trajectory={trajectory} showHeatmap={showHeatmap} onFloatSelect={handleSelectFloat} />
                   
                   {/* Heatmap layer using CircleMarkers */}
                   {showHeatmap && heatmapData.map((point, index) => (
@@ -381,33 +432,34 @@ export default function App() {
                   ))}
                   
                   {/* Custom float markers */}
-                  {!showHeatmap && floats.map(float => (
-                    <Marker
-                      key={float.float_id}
-                      position={[float.last_position_lat || 0, float.last_position_lon || 0]}
-                      icon={createFloatIcon(float, selectedFloats.includes(float.float_id))}
-                      eventHandlers={{
-                        click: () => handleSelectFloat(float.float_id)
-                      }}
-                    >
-                      <Popup>
-                        <div className="space-y-2 min-w-[200px]">
-                          <div className="font-semibold text-navy">Float {float.float_id}</div>
-                          <div className="text-sm space-y-1">
-                            <div><span className="font-medium">Status:</span> {float.status}</div>
-                            <div><span className="font-medium">Position:</span> {float.last_position_lat?.toFixed(3)}°, {float.last_position_lon?.toFixed(3)}°</div>
-                            <div><span className="font-medium">Platform:</span> {float.platform_type}</div>
+                  {!showHeatmap && floats.map(float => {
+                    if (floatsFiltered && !floatsFiltered.includes(float.float_id)) return null;
+                    return (
+                      <Marker
+                        key={float.float_id}
+                        position={[float.last_position_lat || 0, float.last_position_lon || 0]}
+                        icon={createFloatIcon(float, selectedFloats.includes(float.float_id))}
+                        eventHandlers={{ click: () => handleSelectFloat(float.float_id) }}
+                      >
+                        <Popup>
+                          <div className="space-y-2 min-w-[200px]">
+                            <div className="font-semibold text-navy">Float {float.float_id}</div>
+                            <div className="text-sm space-y-1">
+                              <div><span className="font-medium">Status:</span> {float.status}</div>
+                              <div><span className="font-medium">Position:</span> {float.last_position_lat?.toFixed(3)}°, {float.last_position_lon?.toFixed(3)}°</div>
+                              <div><span className="font-medium">Platform:</span> {float.platform_type}</div>
+                            </div>
+                            <button 
+                              onClick={() => handleSelectFloat(float.float_id)}
+                              className="w-full mt-2 px-3 py-1 bg-navy text-white rounded text-sm hover:bg-blue-800"
+                            >
+                              Analyze Profile
+                            </button>
                           </div>
-                          <button 
-                            onClick={() => handleSelectFloat(float.float_id)}
-                            className="w-full mt-2 px-3 py-1 bg-navy text-white rounded text-sm hover:bg-blue-800"
-                          >
-                            Analyze Profile
-                          </button>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
+                        </Popup>
+                      </Marker>
+                    );
+                  })}
                   
                   {/* Trajectory */}
                   {trajectory.length > 0 && (
@@ -418,6 +470,13 @@ export default function App() {
                       opacity={0.7}
                     />
                   )}
+
+                  {/* Draw the polygon as a visual guide */}
+                  {polygonVertices.length > 0 && (
+                    <Polygon positions={polygonVertices} pathOptions={{ color: 'red', weight: 2, fillOpacity: 0.1 }} />
+                  )}
+
+                  <PolygonModeHandler polygonMode={polygonMode} setPolygonVertices={setPolygonVertices} />
                 </MapContainer>
                 
                 {/* Floating Legend */}
@@ -437,6 +496,20 @@ export default function App() {
                       <span>Selected ({selectedFloats.length})</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Adding the polygon toggle button to the map controls */}
+                <div className="absolute top-4 left-4 z-[1000]">
+                  <button
+                    onClick={() => {
+                      setPolygonMode(!polygonMode);
+                      setPolygonVertices([]);
+                      if (polygonMode) setFloatsFiltered(null); // reset filter when exiting mode
+                    }}
+                    className={`px-3 py-1 rounded text-sm ${polygonMode ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  >
+                    {polygonMode ? 'Cancel Polygon' : 'Draw Polygon'}
+                  </button>
                 </div>
               </div>
             </div>
